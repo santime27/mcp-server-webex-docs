@@ -73,16 +73,19 @@ def search_webex_api_docs(
     domain: Optional[str] = None,
     category: Optional[str] = None,
     limit: int = 15,
-    include_schema: bool = True
+    include_schema: bool = False
 ) -> List[Dict[str, Any]]:
     """Search Webex API documentation across all 1,450+ endpoints using local SQLite FTS5 full-text search.
+    
+    Returns a lightweight summary of matching endpoints (title, method, path, section_number, domain) to conserve context tokens.
+    To inspect the full OpenAPI schema, parameters, required OAuth scopes, and request/response JSON bodies for an endpoint, make a follow-up call to get_webex_endpoint_schema(endpoint, domain).
     
     Args:
         query: Keyword or phrase to search for (e.g., 'audit events', 'create user', 'call queue', 'recordings')
         domain: Optional domain filter ('admin', 'calling', 'meetings', or 'messaging')
         category: Optional category filter (e.g., 'Admin Audit Events', 'Call Routing')
         limit: Max number of results to return (default 15)
-        include_schema: If True (default), returns the complete OpenAPI JSON schema, parameter table, required scopes, and HTTP response codes in 'full_markdown_content' for each matching endpoint.
+        include_schema: If True, includes the complete OpenAPI JSON schema in 'full_markdown_content' directly in search results. Defaults to False to save context tokens.
     """
     logger.info("Executing tool: search_webex_api_docs with query='%s', domain='%s', category='%s', include_schema=%s", query, domain, category, include_schema)
     db_path = get_default_db_path()
@@ -126,6 +129,7 @@ def search_webex_api_docs(
             "method": r["method"],
             "path": r["path"],
             "summary": r["summary"][:200] if r["summary"] else "",
+            "schema_instruction": f"Call get_webex_endpoint_schema(endpoint='{r['section_number']}', domain='{r['domain_name']}') to inspect parameters, OAuth scopes, and OpenAPI request/response JSON schemas.",
             "start_line": r["start_line"],
             "end_line": r["end_line"],
             "doc_filepath": r["doc_filepath"]
@@ -146,7 +150,9 @@ def search_webex_api_docs(
 
 @mcp.tool()
 def get_webex_endpoint_schema(endpoint: str, domain: Optional[str] = None) -> Dict[str, Any]:
-    """Retrieve the complete OpenAPI documentation block, parameters table, required scopes, request body, and JSON schemas for a specific Webex API endpoint.
+    """Retrieve the complete OpenAPI documentation block, parameters table, required OAuth scopes, request body, and JSON schemas for a specific Webex API endpoint.
+    
+    Always call this tool after finding an endpoint with search_webex_api_docs to inspect its full parameters table, required OAuth scopes, and OpenAPI JSON request/response schemas.
     
     Args:
         endpoint: Can be the section number (e.g., '1.1', '5.1.2'), the HTTP path (e.g., '/v1/people', 'getDomainVerificationToken'), or the endpoint title (e.g., 'Create a User').
