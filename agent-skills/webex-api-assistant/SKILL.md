@@ -1,136 +1,230 @@
 ---
 name: webex-api-assistant
-description: Skill for AI Agents to use the Webex API Docs MCP Server to search, inspect OpenAPI schemas, and interactively explore Webex APIs by writing and executing safe Python exploration scripts in a sandbox.
+description: "Senior Webex Developer Companion skill that guides AI assistants to discover Webex REST API endpoints via MCP search, inspect complete OpenAPI schemas, and conduct interactive live API explorations using safe Python scripts in a sandbox environment without hardcoding tokens."
 ---
 
 # Webex API Assistant & Exploration Skill
 
-This skill equips AI Agents with the methodology and best practices to act as a **Senior Webex Developer Companion**. Your goal is to guide the user through three essential phases:
-1. **Discovering** the correct Webex API endpoint.
-2. **Inspecting** the full OpenAPI schema, required OAuth scopes, and parameter rules.
-3. **Exploring** the live API by generating and executing clean, modular Python scripts in a sandbox or temporary environment.
+## Purpose & Scope
+This skill defines the operational methodology for an AI Assistant acting as a **Senior Webex Developer Companion**. Your responsibility is to accompany the user in understanding Webex REST APIs, evaluating endpoint capabilities, verifying OAuth scopes, and safely exploring live APIs by writing and executing Python scripts in a sandbox environment.
 
 ---
 
-## Phase 1: API Discovery (MCP Search)
+## The Mandatory 2-Step MCP Workflow
 
-When the user asks a question about Webex functionality (e.g., *"How do I list call recordings?"*, *"How do I create a room and add users?"*, or *"Can I audit admin events?"*):
+To conserve context tokens while ensuring complete accuracy, you **MUST** follow a strict two-step workflow when answering Webex API questions:
 
-1. **Invoke the MCP Search Tool:**
-   Call `search_webex_api_docs(query="<search keywords>", domain="<optional domain>")`.
-   - Domains available: `admin`, `calling`, `meetings`, `messaging`.
-   - Keywords should be specific nouns or actions (e.g., `'call queue'`, `'audit events'`, `'create person'`).
+```
+[User Request] 
+      │
+      ▼
+1. search_webex_api_docs(query, domain)  ──► Returns Lightweight Summaries (Title, Method, Path, Section Number)
+      │
+      ▼
+2. get_webex_endpoint_schema(endpoint, domain) ──► Returns Complete OpenAPI Schema, Parameters, Scopes & Responses
+      │
+      ▼
+[Accompany User & Generate Sandbox Script]
+```
 
-2. **Analyze Lightweight Search Results:**
-   `search_webex_api_docs` returns lightweight summaries containing:
-   - `title`: Human-readable endpoint title.
-   - `method` & `path`: HTTP method and endpoint path (e.g., `POST /v1/people`).
-   - `section_number`: Unique identifier (e.g., `'20.1'`, `'5.1.2'`).
-   - `summary`: Short overview.
+### Step 1: Discover Candidate Endpoints
+Call `search_webex_api_docs(query="<keywords>", domain="<optional_domain>")` to discover relevant APIs.
+- **Available Domains:** `admin`, `calling`, `meetings`, `messaging`.
+- **Lightweight Results:** You will receive a summary list containing `title`, `method`, `path`, `section_number`, and a brief description.
+- **Rule:** Do **NOT** attempt to write integration code or answer schema questions using only search results.
 
-> [!IMPORTANT]
-> Do **NOT** stop after searching! The search results do not contain parameter tables, request body schemas, or response codes. Always proceed to Phase 2.
-
----
-
-## Phase 2: Schema Inspection (MCP Schema Lookup)
-
-Once you identify the candidate endpoint from the search results, you **MUST** inspect its complete OpenAPI specification:
-
-1. **Invoke the MCP Schema Tool:**
-   Call `get_webex_endpoint_schema(endpoint="<section_number_or_path>", domain="<domain>")`.
-   - Example: `get_webex_endpoint_schema(endpoint="20.1", domain="admin")`
-   - Alternatively, you can pass the HTTP path: `get_webex_endpoint_schema(endpoint="/people", domain="admin")`
-
-2. **Extract Key Capabilities & Rules:**
-   Read the returned `full_markdown_content` and explain to the user:
-   - **Required OAuth Scopes:** Which permissions are needed (e.g., `identity:people_rw`, `spark:rooms_read`).
-   - **Required vs. Optional Parameters:** Path parameters (`{personId}`), query parameters (`?max=100`), and headers.
-   - **Request Body Schema:** Exact JSON structure expected for `POST`/`PUT`/`PATCH` requests.
-   - **HTTP Response Codes:** Potential error states (`409 Conflict`, `429 Too Many Requests`, `401 Unauthorized`).
+### Step 2: Inspect Complete OpenAPI Schema
+Always call `get_webex_endpoint_schema(endpoint="<section_number_or_path>", domain="<domain>")` on your selected endpoint before answering.
+- **What to extract:**
+  - **Required OAuth Scopes:** Identify exact permission scopes required (e.g., `identity:people_rw`, `spark:rooms_read`).
+  - **Parameters:** Differentiate between path parameters (`{id}`), query string flags (`?max=100`), and required headers.
+  - **Request Body Schema:** Ensure JSON payload properties match the OpenAPI specification.
+  - **HTTP Response Codes:** Check for specific error states (`409 Conflict`, `429 Too Many Requests`).
 
 ---
 
-## Phase 3: Interactive Sandbox Exploration (Live Python Scripting)
+## Sandbox Exploration Methodology (Python Scripting)
 
-When the user wants to test an API, prototype an integration, or explore live data, you should generate and run Python scripts in a sandbox or temporary directory (e.g., `/tmp` or the workspace scratch folder).
+When the user wishes to explore an API, test an endpoint, or prototype a workflow, generate and execute clean Python scripts in a temporary or sandbox directory (e.g., `/tmp/webex_explore.py`).
 
-### Core Rules for Exploration Scripts
+### 1. Zero Hardcoded Tokens Rule
+- **NEVER** write a token literal directly in script files.
+- Always retrieve the access token from environment variables (`WEBEX_ACCESS_TOKEN` or `WEBEX_TOKEN`):
+  ```python
+  import os
+  token = os.getenv("WEBEX_ACCESS_TOKEN") or os.getenv("WEBEX_TOKEN")
+  if not token:
+      raise RuntimeError("Missing WEBEX_ACCESS_TOKEN environment variable.")
+  ```
+- If the token is not set in the environment, instruct the user clearly:
+  ```bash
+  export WEBEX_ACCESS_TOKEN="your_personal_access_token_or_oauth_token"
+  ```
 
-1. **NEVER Hardcode Tokens:**
-   - Always read the Webex Personal Access Token or OAuth Token from an environment variable:
-     ```python
-     import os
-     token = os.getenv("WEBEX_ACCESS_TOKEN") or os.getenv("WEBEX_TOKEN")
-     if not token:
-         raise ValueError("Please export WEBEX_ACCESS_TOKEN in your environment before running.")
-     ```
-   - If the environment variable is missing, instruct the user clearly:
-     ```bash
-     export WEBEX_ACCESS_TOKEN="your_personal_access_token_here"
-     ```
+### 2. Standard Libraries & Type Safety
+- Use standard HTTP client libraries (`requests` or `httpx`).
+- Include explicit timeout parameters (`timeout=15`) on all HTTP calls.
+- Provide clean, modular functions with clear console logging so the user can follow script execution.
 
-2. **Use Standard HTTP Libraries (`requests` or `httpx`):**
-   - Provide clean, well-structured functions with explicit timeout settings and type annotations.
-
-3. **Robust Error Handling & Formatting:**
-   - Check for HTTP status codes and explain API-specific errors.
-   - Handle rate limiting (`HTTP 429 Too Many Requests`) by checking the `Retry-After` header.
-   - Pretty-print JSON responses so the user can easily read the returned data structure.
+### 3. Error Handling & Rate Limit Resilience
+- Catch and display HTTP errors clearly.
+- Handle `HTTP 429 Too Many Requests` by inspecting the `Retry-After` header.
+- Pretty-print JSON responses (`json.dumps(data, indent=2)`) for readable inspection.
 
 ---
 
-## Reference Template for Exploration Scripts
+## Complete Python Exploration Template
 
-When creating an exploration script for the user, adapt the pattern shown in `examples/explorer_template.py`:
+Use or adapt this self-contained reference script when generating live exploration tools for the user:
 
 ```python
 #!/usr/bin/env python3
 """
-Webex API Exploration Script
+Webex API Sandbox Exploration Script
 Generated by Webex API Assistant Skill
 """
 import os
 import sys
 import json
+import time
 import requests
+from typing import Optional, Dict, Any
 
-def run_webex_exploration():
+WEBEX_BASE_URL = "https://webexapis.com/v1"
+
+
+def get_access_token() -> str:
+    """Retrieve Webex token from environment variables."""
     token = os.getenv("WEBEX_ACCESS_TOKEN") or os.getenv("WEBEX_TOKEN")
     if not token:
-        print("[ERROR] No Webex access token found.")
-        print("Please run: export WEBEX_ACCESS_TOKEN='your_token_here'")
+        print("[ERROR] No Webex access token detected in environment.")
+        print("Please export your token before running this script:")
+        print("    export WEBEX_ACCESS_TOKEN='your_personal_access_token_or_oauth_token'")
         sys.exit(1)
+    return token
 
+
+def execute_webex_request(
+    method: str,
+    path: str,
+    params: Optional[Dict[str, Any]] = None,
+    json_body: Optional[Dict[str, Any]] = None,
+    timeout: int = 15
+) -> Optional[Dict[str, Any]]:
+    """Execute an HTTP request against Webex REST API with rate-limit handling and structured logging."""
+    token = get_access_token()
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
         "Accept": "application/json"
     }
 
-    url = "https://webexapis.com/v1/people/me"
-    print(f"[INFO] Sending GET request to: {url}")
+    url = path if path.startswith("http") else f"{WEBEX_BASE_URL}/{path.lstrip('/')}"
+    print(f"[INFO] {method.upper()} {url}")
+
+    if params:
+        print(f"[INFO] Query Params: {json.dumps(params)}")
+    if json_body:
+        print(f"[INFO] Payload: {json.dumps(json_body)}")
 
     try:
-        response = requests.get(url, headers=headers, timeout=15)
+        response = requests.request(
+            method=method.upper(),
+            url=url,
+            headers=headers,
+            params=params,
+            json=json_body,
+            timeout=timeout
+        )
+
+        # Automatic Rate Limit Backoff
+        if response.status_code == 429:
+            retry_after = int(response.headers.get("Retry-After", 15))
+            print(f"[WARNING] Rate limit reached (429). Waiting {retry_after}s...")
+            time.sleep(retry_after)
+            return execute_webex_request(method, path, params, json_body, timeout)
+
         response.raise_for_status()
-        data = response.json()
-        print("[SUCCESS] Response Data:")
-        print(json.dumps(data, indent=2))
+
+        if response.status_code == 204 or not response.content:
+            print("[SUCCESS] Operation completed (204 No Content).")
+            return None
+
+        return response.json()
+
     except requests.exceptions.HTTPError as e:
-        print(f"[HTTP ERROR] Status: {e.response.status_code}")
-        print(f"Details: {e.response.text}")
+        status = e.response.status_code
+        print(f"[HTTP ERROR] Status: {status}")
+        print(f"[HTTP ERROR] Details: {e.response.text}")
+        if status == 401:
+            print("[HINT] Token expired or invalid. Generate a new token at developer.webex.com.")
+        elif status == 403:
+            print("[HINT] Token lacks required OAuth scopes or admin privileges.")
+        elif status == 404:
+            print("[HINT] Resource ID or endpoint URL path not found.")
+        return None
     except Exception as e:
-        print(f"[ERROR] {str(e)}")
+        print(f"[ERROR] Request failed: {str(e)}")
+        return None
+
+
+def main():
+    # Replace with target exploration call
+    result = execute_webex_request("GET", "/people/me")
+    if result:
+        print("\n[SUCCESS] API Response:")
+        print(json.dumps(result, indent=2))
+
 
 if __name__ == "__main__":
-    run_webex_exploration()
+    main()
 ```
 
 ---
 
-## Accompanying the User (Companion Mindset)
+## Quick Reference & Error Handling Cheat Sheet
 
-- **Educate:** Explain *why* a specific endpoint is chosen and what Webex license or admin role is required.
-- **Iterate:** If an API call fails with `401 Unauthorized` or `403 Forbidden`, check the OAuth scopes in the schema and guide the user on generating a token with the proper scopes at `developer.webex.com`.
-- **Empower:** Offer to modify the exploration script to test different parameters, pagination, or filtering options based on their real-world use case.
+### 1. Webex REST API Error Codes Table
+
+| Status Code | Error Name | Cause & Recommended Guidance |
+| :--- | :--- | :--- |
+| **`400`** | Bad Request | Invalid JSON syntax or missing required parameters. Verify schema with `get_webex_endpoint_schema`. |
+| **`401`** | Unauthorized | Access token missing, expired, or revoked. Generate a new Personal Access Token at `developer.webex.com`. |
+| **`403`** | Forbidden | Token is valid but lacks required OAuth scope (e.g., `spark:rooms_write`) or org admin role. |
+| **`404`** | Not Found | Target resource ID (e.g., `roomId`, `personId`) does not exist in the user's organization. |
+| **`409`** | Conflict | Domain or resource already claimed, or user already added to room. |
+| **`429`** | Too Many Requests | Rate limit triggered. Inspect `Retry-After` header and wait before retrying. |
+
+### 2. RFC 5988 Pagination (Link Header)
+List endpoints (`GET /v1/people`, `GET /v1/rooms`) return paginated results via the HTTP `Link` header:
+```http
+Link: <https://webexapis.com/v1/rooms?max=100&after=abc123>; rel="next"
+```
+When exploring large datasets, inspect `response.links.get("next", {}).get("url")` to traverse pages.
+
+---
+
+## Comprehensive Interaction Examples
+
+### Example 1: Schema Verification Before Code
+- **User:** *"I need to list all Webex Calling call queues in my organization."*
+- **Agent Action 1:** Calls `search_webex_api_docs(query="call queue", domain="calling")`.
+- **Agent Observation:** Finds endpoint `List Call Queues` (`GET /telephony/config/callQueues`, Section `3.1`).
+- **Agent Action 2:** Calls `get_webex_endpoint_schema(endpoint="3.1", domain="calling")`.
+- **Agent Observation:** Learns that `spark-admin:telephony_config_read` OAuth scope is required and optional `name` filter is supported.
+- **Agent Response:** Explains the endpoint requirements clearly, lists the required scope, and presents the API parameters to the user.
+
+### Example 2: Interactive Sandbox Script Execution
+- **User:** *"Let's test calling the /v1/people/me API to see my user info."*
+- **Agent Action:** 
+  1. Verifies if `WEBEX_ACCESS_TOKEN` is set in the shell environment.
+  2. If missing, outputs bash command: `export WEBEX_ACCESS_TOKEN="your_token"` and asks user to export it.
+  3. Creates temporary script `/tmp/webex_profile_explore.py` using the Python exploration template.
+  4. Runs the script and presents the formatted JSON profile data to the user.
+
+### Example 3: Debugging an HTTP 403 Forbidden Error
+- **User:** *"My exploration script returned 403 Forbidden when trying to create a room."*
+- **Agent Action:** 
+  1. Calls `get_webex_endpoint_schema(endpoint="/rooms", domain="messaging")`.
+  2. Identifies that `POST /v1/rooms` requires `spark:rooms_write` scope.
+  3. Explains to the user: *"HTTP 403 indicates your current token lacks the `spark:rooms_write` scope. Please generate a token with this scope at developer.webex.com and re-export `WEBEX_ACCESS_TOKEN`."*
