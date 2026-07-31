@@ -72,22 +72,17 @@ def search_webex_api_docs(
     query: str,
     domain: Optional[str] = None,
     category: Optional[str] = None,
-    limit: int = 15,
-    include_schema: bool = False
+    limit: int = 15
 ) -> List[Dict[str, Any]]:
     """Search Webex API documentation across all 1,450+ endpoints using local SQLite FTS5 full-text search.
-    
-    Returns a lightweight summary of matching endpoints (title, method, path, section_number, domain) to conserve context tokens.
-    To inspect the full OpenAPI schema, parameters, required OAuth scopes, and request/response JSON bodies for an endpoint, make a follow-up call to get_webex_endpoint_schema(endpoint, domain).
     
     Args:
         query: Keyword or phrase to search for (e.g., 'audit events', 'create user', 'call queue', 'recordings')
         domain: Optional domain filter ('admin', 'calling', 'meetings', or 'messaging')
         category: Optional category filter (e.g., 'Admin Audit Events', 'Call Routing')
         limit: Max number of results to return (default 15)
-        include_schema: If True, includes the complete OpenAPI JSON schema in 'full_markdown_content' directly in search results. Defaults to False to save context tokens.
     """
-    logger.info("Executing tool: search_webex_api_docs with query='%s', domain='%s', category='%s', include_schema=%s", query, domain, category, include_schema)
+    logger.info("Executing tool: search_webex_api_docs with query='%s', domain='%s', category='%s'", query, domain, category)
     db_path = get_default_db_path()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -121,7 +116,7 @@ def search_webex_api_docs(
     rows = cur.execute(sql, params).fetchall()
     results = []
     for r in rows:
-        item = {
+        results.append({
             "domain": r["domain_name"],
             "section_number": r["section_number"],
             "title": r["title"],
@@ -129,20 +124,10 @@ def search_webex_api_docs(
             "method": r["method"],
             "path": r["path"],
             "summary": r["summary"][:200] if r["summary"] else "",
-            "schema_instruction": f"Call get_webex_endpoint_schema(endpoint='{r['section_number']}', domain='{r['domain_name']}') to inspect parameters, OAuth scopes, and OpenAPI request/response JSON schemas.",
             "start_line": r["start_line"],
             "end_line": r["end_line"],
             "doc_filepath": r["doc_filepath"]
-        }
-        if include_schema:
-            try:
-                with open(r["doc_filepath"], "r", encoding="utf-8") as f:
-                    all_lines = f.readlines()
-                    snippet = "".join(all_lines[r["start_line"] - 1 : r["end_line"]])
-                    item["full_markdown_content"] = snippet.rstrip()
-            except Exception as e:
-                item["full_markdown_content"] = f"Error loading schema snippet: {str(e)}"
-        results.append(item)
+        })
 
     conn.close()
     return results

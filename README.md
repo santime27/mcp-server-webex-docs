@@ -146,6 +146,13 @@ When connected to an MCP client (such as Claude Desktop, Antigravity, or custom 
 
 ```text
 mcp-server-webex-docs/
+├── agent-skills/              # AI Agent Skills (instructions & templates)
+│   └── webex-api-assistant/   # Methodology for discovering, inspecting, and exploring APIs
+│       ├── SKILL.md
+│       ├── examples/
+│       │   └── explorer_template.py
+│       └── references/
+│           └── webex_api_cheatsheet.md
 ├── docs/                      # Git-versioned Markdown documentation
 │   ├── admin.md
 │   ├── calling.md
@@ -167,6 +174,17 @@ mcp-server-webex-docs/
 │   └── server.py              # MCP FastMCP server implementation
 ├── requirements.txt
 ```
+
+---
+
+## 🧠 AI Agent Skill (`agent-skills/webex-api-assistant`)
+
+This repository includes an official **Agent Skill** in `agent-skills/webex-api-assistant/SKILL.md` designed to teach any AI Assistant (such as Antigravity, Claude, or Cursor) how to act as a **Senior Webex Developer Companion**.
+
+The skill instructs the model on:
+1. **The 2-Step MCP Workflow:** Always discovering APIs via `search_webex_api_docs` first, then inspecting full OpenAPI schemas and OAuth scopes via `get_webex_endpoint_schema`.
+2. **Interactive Sandbox Exploration:** Generating and executing clean Python exploration scripts in a sandbox/temporary environment to test live APIs.
+3. **Security Best Practices:** Reading `WEBEX_ACCESS_TOKEN` from environment variables without ever hardcoding tokens.
 
 ---
 
