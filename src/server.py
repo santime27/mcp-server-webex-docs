@@ -72,17 +72,19 @@ def search_webex_api_docs(
     query: str,
     domain: Optional[str] = None,
     category: Optional[str] = None,
-    limit: int = 15
+    limit: int = 15,
+    include_schema: bool = True
 ) -> List[Dict[str, Any]]:
-    """Search Webex API documentation across all 1,400+ endpoints using local SQLite FTS5 full-text search.
+    """Search Webex API documentation across all 1,450+ endpoints using local SQLite FTS5 full-text search.
     
     Args:
         query: Keyword or phrase to search for (e.g., 'audit events', 'create user', 'call queue', 'recordings')
         domain: Optional domain filter ('admin', 'calling', 'meetings', or 'messaging')
         category: Optional category filter (e.g., 'Admin Audit Events', 'Call Routing')
         limit: Max number of results to return (default 15)
+        include_schema: If True (default), returns the complete OpenAPI JSON schema, parameter table, required scopes, and HTTP response codes in 'full_markdown_content' for each matching endpoint.
     """
-    logger.info("Executing tool: search_webex_api_docs with query='%s', domain='%s', category='%s'", query, domain, category)
+    logger.info("Executing tool: search_webex_api_docs with query='%s', domain='%s', category='%s', include_schema=%s", query, domain, category, include_schema)
     db_path = get_default_db_path()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -116,7 +118,7 @@ def search_webex_api_docs(
     rows = cur.execute(sql, params).fetchall()
     results = []
     for r in rows:
-        results.append({
+        item = {
             "domain": r["domain_name"],
             "section_number": r["section_number"],
             "title": r["title"],
@@ -127,34 +129,48 @@ def search_webex_api_docs(
             "start_line": r["start_line"],
             "end_line": r["end_line"],
             "doc_filepath": r["doc_filepath"]
-        })
+        }
+        if include_schema:
+            try:
+                with open(r["doc_filepath"], "r", encoding="utf-8") as f:
+                    all_lines = f.readlines()
+                    snippet = "".join(all_lines[r["start_line"] - 1 : r["end_line"]])
+                    item["full_markdown_content"] = snippet.rstrip()
+            except Exception as e:
+                item["full_markdown_content"] = f"Error loading schema snippet: {str(e)}"
+        results.append(item)
 
     conn.close()
     return results
 
 
 @mcp.tool()
-def get_webex_endpoint_schema(domain: str, section_number: str) -> Dict[str, Any]:
-    """Retrieve the complete OpenAPI documentation block, parameters table, and JSON schemas for a specific Webex API endpoint.
+def get_webex_endpoint_schema(endpoint: str, domain: Optional[str] = None) -> Dict[str, Any]:
+    """Retrieve the complete OpenAPI documentation block, parameters table, required scopes, request body, and JSON schemas for a specific Webex API endpoint.
     
     Args:
-        domain: Domain name ('admin', 'calling', 'meetings', or 'messaging')
-        section_number: Section number of the endpoint (e.g., '1.1', '2.5', '5.10')
+        endpoint: Can be the section number (e.g., '1.1', '5.1.2'), the HTTP path (e.g., '/v1/people', 'getDomainVerificationToken'), or the endpoint title (e.g., 'Create a User').
+        domain: Optional domain filter ('admin', 'calling', 'meetings', or 'messaging').
     """
-    logger.info("Executing tool: get_webex_endpoint_schema for domain='%s', section='%s'", domain, section_number)
+    logger.info("Executing tool: get_webex_endpoint_schema for endpoint='%s', domain='%s'", endpoint, domain)
     session = get_session()
-    d = session.query(Domain).filter_by(name=domain.lower()).first()
-    if not d:
-        session.close()
-        return {"error": f"Domain '{domain}' not found."}
+    
+    query = session.query(Endpoint).join(Domain)
+    if domain:
+        query = query.filter(Domain.name == domain.lower())
 
-    ep = session.query(Endpoint).filter_by(domain_id=d.id, section_number=section_number).first()
+    ep = query.filter(Endpoint.section_number == endpoint).first()
+    if not ep:
+        ep = query.filter(Endpoint.path.like(f"%{endpoint}%")).first()
+    if not ep:
+        ep = query.filter(Endpoint.title.like(f"%{endpoint}%")).first()
+
     if not ep:
         session.close()
-        return {"error": f"Endpoint with section '{section_number}' not found in domain '{domain}'."}
+        return {"error": f"Endpoint matching '{endpoint}' not found."}
 
     result = {
-        "domain": d.name,
+        "domain": ep.domain.name,
         "section_number": ep.section_number,
         "title": ep.title,
         "method": ep.method,
