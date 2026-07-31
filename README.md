@@ -128,5 +128,17 @@ mcp-server-webex-docs/
 │   ├── __init__.py
 │   └── server.py              # MCP FastMCP server implementation
 ├── requirements.txt
-└── README.md
 ```
+
+---
+
+## 👨‍💻 Authors & Credits
+
+Built with ❤️ by **[Santiago Meneses Garcia](https://github.com/santime27)**, Software Engineer, in pair-programming collaboration with **Antigravity** (Google DeepMind Agentic AI Assistant).
+
+---
+
+## 📄 License
+
+This project is licensed under the permissive **[MIT License](LICENSE)** — feel free to use, copy, modify, distribute, and build upon this software for both personal and commercial projects without restrictions.
+
