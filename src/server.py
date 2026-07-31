@@ -1,6 +1,13 @@
 import os
+import sys
 import sqlite3
 from typing import Optional, List, Dict, Any
+
+# Ensure project root is in sys.path so 'python3 /path/to/src/server.py' works anywhere without PYTHONPATH
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 from mcp.server.fastmcp import FastMCP
 from src.models.db import Domain, Category, Endpoint, get_session, get_default_db_path
 

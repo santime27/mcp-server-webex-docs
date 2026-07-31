@@ -91,7 +91,7 @@ The server indexes **1,456 official Webex endpoints** across 4 major service dom
 
 ## 🔌 How to Connect This MCP Server (Configuration)
 
-To connect this server to an MCP-compatible AI Assistant (such as **Gemini CLI / Google Antigravity**, **Claude Desktop**, or **Cursor**), add the following server entry to your client's MCP configuration JSON file:
+Thanks to automatic path resolving in `src/server.py`, connecting this server to any MCP client is **ultra-simple**—no `PYTHONPATH`, `cwd`, or `-m` flags required!
 
 ### 1. Gemini CLI / Google Antigravity / Gemini Code Assist
 Add this to your Gemini MCP settings file (e.g., `~/.gemini/settings.json` or your project's MCP configuration):
@@ -102,19 +102,14 @@ Add this to your Gemini MCP settings file (e.g., `~/.gemini/settings.json` or yo
     "webex-api-docs": {
       "command": "python3",
       "args": [
-        "-m",
-        "src.server"
-      ],
-      "cwd": "/path/to/mcp-server-webex-docs",
-      "env": {
-        "PYTHONPATH": "/path/to/mcp-server-webex-docs"
-      }
+        "/path/to/mcp-server-webex-docs/src/server.py"
+      ]
     }
   }
 }
 ```
 
-### 2. Claude Desktop / Generic MCP Client (`claude_desktop_config.json`)
+### 2. Claude Desktop / Cursor / Generic MCP Client (`claude_desktop_config.json`)
 ```json
 {
   "mcpServers": {
@@ -122,10 +117,7 @@ Add this to your Gemini MCP settings file (e.g., `~/.gemini/settings.json` or yo
       "command": "python3",
       "args": [
         "/path/to/mcp-server-webex-docs/src/server.py"
-      ],
-      "env": {
-        "PYTHONPATH": "/path/to/mcp-server-webex-docs"
-      }
+      ]
     }
   }
 }
