@@ -1,12 +1,21 @@
 import os
 import sys
 import sqlite3
+import logging
 from typing import Optional, List, Dict, Any
 
 # Ensure project root is in sys.path so 'python3 /path/to/src/server.py' works anywhere without PYTHONPATH
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
+
+logging.basicConfig(
+    stream=sys.stderr,
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger("webex-api-docs-mcp")
 
 from mcp.server.fastmcp import FastMCP
 from src.models.db import Domain, Category, Endpoint, get_session, get_default_db_path
@@ -17,6 +26,7 @@ mcp = FastMCP("webex-api-docs-mcp")
 def list_webex_domains() -> List[Dict[str, Any]]:
     """List all available Webex API documentation domains (e.g. admin, calling, meetings, messaging) and their endpoint counts.
     """
+    logger.info("Executing tool: list_webex_domains")
     session = get_session()
     domains = session.query(Domain).all()
     res = [
@@ -38,6 +48,7 @@ def list_webex_categories(domain: str) -> List[Dict[str, Any]]:
     Args:
         domain: The name of the domain (e.g., 'admin', 'calling', 'meetings', 'messaging')
     """
+    logger.info("Executing tool: list_webex_categories for domain='%s'", domain)
     session = get_session()
     d = session.query(Domain).filter_by(name=domain.lower()).first()
     if not d:
@@ -71,6 +82,7 @@ def search_webex_api_docs(
         category: Optional category filter (e.g., 'Admin Audit Events', 'Call Routing')
         limit: Max number of results to return (default 15)
     """
+    logger.info("Executing tool: search_webex_api_docs with query='%s', domain='%s', category='%s'", query, domain, category)
     db_path = get_default_db_path()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -129,6 +141,7 @@ def get_webex_endpoint_schema(domain: str, section_number: str) -> Dict[str, Any
         domain: Domain name ('admin', 'calling', 'meetings', or 'messaging')
         section_number: Section number of the endpoint (e.g., '1.1', '2.5', '5.10')
     """
+    logger.info("Executing tool: get_webex_endpoint_schema for domain='%s', section='%s'", domain, section_number)
     session = get_session()
     d = session.query(Domain).filter_by(name=domain.lower()).first()
     if not d:
@@ -165,4 +178,8 @@ def get_webex_endpoint_schema(domain: str, section_number: str) -> Dict[str, Any
 
 
 if __name__ == "__main__":
+    logger.info("========================================================================")
+    logger.info("Starting webex-api-docs-mcp server - Built by Santiago Meneses Garcia")
+    logger.info("Database loaded from: %s", get_default_db_path())
+    logger.info("========================================================================")
     mcp.run()
