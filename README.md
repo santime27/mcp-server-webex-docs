@@ -89,6 +89,52 @@ The server indexes **1,456 official Webex endpoints** across 4 major service dom
 
 ---
 
+## 🔌 How to Connect This MCP Server (Configuration)
+
+To connect this server to an MCP-compatible AI Assistant (such as **Gemini CLI / Google Antigravity**, **Claude Desktop**, or **Cursor**), add the following server entry to your client's MCP configuration JSON file:
+
+### 1. Gemini CLI / Google Antigravity / Gemini Code Assist
+Add this to your Gemini MCP settings file (e.g., `~/.gemini/settings.json` or your project's MCP configuration):
+
+```json
+{
+  "mcpServers": {
+    "webex-api-docs": {
+      "command": "python3",
+      "args": [
+        "-m",
+        "src.server"
+      ],
+      "cwd": "/path/to/mcp-server-webex-docs",
+      "env": {
+        "PYTHONPATH": "/path/to/mcp-server-webex-docs"
+      }
+    }
+  }
+}
+```
+
+### 2. Claude Desktop / Generic MCP Client (`claude_desktop_config.json`)
+```json
+{
+  "mcpServers": {
+    "webex-api-docs": {
+      "command": "python3",
+      "args": [
+        "/path/to/mcp-server-webex-docs/src/server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/path/to/mcp-server-webex-docs"
+      }
+    }
+  }
+}
+```
+*Note: Replace `/path/to/mcp-server-webex-docs` with the absolute path where you cloned this repository on your machine.*
+
+---
+
+
 ## 🤖 MCP Tools Exposed for AI Agents
 
 When connected to an MCP client (such as Claude Desktop, Antigravity, or custom agents), this server exposes the following tools:
