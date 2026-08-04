@@ -81,12 +81,12 @@ def search_webex_api_docs(
     category: Optional[str] = None,
     limit: int = 15
 ) -> List[Dict[str, Any]]:
-    """Search Webex API documentation across all 1,450+ endpoints using local SQLite FTS5 full-text search.
+    """Search Webex API documentation across all 4,500+ endpoints (Cloud REST APIs & RoomOS xAPI) using local SQLite FTS5 full-text search.
     
     Args:
-        query: Keyword or phrase to search for (e.g., 'audit events', 'create user', 'call queue', 'recordings')
-        domain: Optional domain filter ('admin', 'calling', 'meetings', or 'messaging')
-        category: Optional category filter (e.g., 'Admin Audit Events', 'Call Routing')
+        query: Keyword or phrase to search for (e.g., 'audit events', 'create user', 'call queue', 'AirPlay', 'volume')
+        domain: Optional domain filter ('admin', 'calling', 'meetings', 'messaging', or 'roomos')
+        category: Optional category filter (e.g., 'Admin Audit Events', 'Call Routing', 'Command', 'Status')
         limit: Max number of results to return (default 15)
     """
     logger.info("Executing tool: search_webex_api_docs with query='%s', domain='%s', category='%s'", query, domain, category)
@@ -147,8 +147,8 @@ def get_webex_endpoint_schema(endpoint: str, domain: Optional[str] = None) -> Di
     Always call this tool after finding an endpoint with search_webex_api_docs to inspect its full parameters table, required OAuth scopes, and OpenAPI JSON request/response schemas.
     
     Args:
-        endpoint: Can be the section number (e.g., '1.1', '5.1.2'), the HTTP path (e.g., '/v1/people', 'getDomainVerificationToken'), or the endpoint title (e.g., 'Create a User').
-        domain: Optional domain filter ('admin', 'calling', 'meetings', or 'messaging').
+        endpoint: Can be the section number (e.g., '1.1', '5.1.2'), the HTTP path (e.g., '/v1/people', 'AirPlay.KeyEvent.Back'), or the endpoint title (e.g., 'Create a User', 'xCommand Audio Volume Set').
+        domain: Optional domain filter ('admin', 'calling', 'meetings', 'messaging', or 'roomos').
     """
     logger.info("Executing tool: get_webex_endpoint_schema for endpoint='%s', domain='%s'", endpoint, domain)
     session = get_session()

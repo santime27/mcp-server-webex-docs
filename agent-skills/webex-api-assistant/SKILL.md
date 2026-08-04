@@ -29,16 +29,17 @@ To conserve context tokens while ensuring complete accuracy, you **MUST** follow
 
 ### Step 1: Discover Candidate Endpoints
 Call `search_webex_api_docs(query="<keywords>", domain="<optional_domain>")` to discover relevant APIs.
-- **Available Domains:** `admin`, `calling`, `meetings`, `messaging`.
+- **Available Domains:** `admin`, `calling`, `meetings`, `messaging`, `roomos`.
+- **RoomOS xAPI (`roomos`):** Includes over 3,000 Cisco RoomOS device endpoints (`xCommand`, `xConfiguration`, `xStatus`, `xEvent`).
 - **Lightweight Results:** You will receive a summary list containing `title`, `method`, `path`, `section_number`, and a brief description.
 - **Rule:** Do **NOT** attempt to write integration code or answer schema questions using only search results.
 
 ### Step 2: Inspect Complete OpenAPI Schema
 Always call `get_webex_endpoint_schema(endpoint="<section_number_or_path>", domain="<domain>")` on your selected endpoint before answering.
 - **What to extract:**
-  - **Required OAuth Scopes:** Identify exact permission scopes required (e.g., `identity:people_rw`, `spark:rooms_read`).
+  - **Required OAuth Scopes:** Identify exact permission scopes required (e.g., `identity:people_rw`, `spark:rooms_read`, `spark:xapi_commands`, `spark:xapi_statuses`).
   - **Parameters:** Differentiate between path parameters (`{id}`), query string flags (`?max=100`), and required headers.
-  - **Request Body Schema:** Ensure JSON payload properties match the OpenAPI specification.
+  - **Request Body Schema:** Ensure JSON payload properties match the OpenAPI specification (for RoomOS `xCommand`, format as `{"deviceId": "<id>", "arguments": { ... }}`).
   - **HTTP Response Codes:** Check for specific error states (`409 Conflict`, `429 Too Many Requests`).
 
 ---

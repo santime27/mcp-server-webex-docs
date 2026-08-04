@@ -2,11 +2,13 @@ import os
 import sys
 from src.pipeline.fetcher import DOMAIN_CONFIGS, fetch_domain_data
 from src.pipeline.markdown_builder import build_markdown_for_domain
+from src.pipeline.roomos_builder import build_roomos_markdown
 from src.pipeline.db_indexer import index_domain_in_db
 from src.models.db import init_db, get_default_db_path
 
 def main():
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    data_dir = os.path.join(base_dir, 'data')
     docs_dir = os.path.join(base_dir, 'docs')
     db_path = get_default_db_path()
 
@@ -20,11 +22,15 @@ def main():
     total_all_endpoints = 0
     results = []
 
-    for domain_name in ['admin', 'calling', 'meetings', 'messaging']:
+    for domain_name in ['admin', 'calling', 'meetings', 'messaging', 'roomos']:
         print(f"Processing domain: '{domain_name.upper()}' ...")
         try:
-            root_node = fetch_domain_data(domain_name)
-            md_path, total_eps, total_cats = build_markdown_for_domain(domain_name, root_node, docs_dir)
+            if domain_name == 'roomos':
+                md_path, total_eps, total_cats = build_roomos_markdown(data_dir, docs_dir)
+            else:
+                root_node = fetch_domain_data(domain_name)
+                md_path, total_eps, total_cats = build_markdown_for_domain(domain_name, root_node, docs_dir)
+            
             eps_indexed, cats_indexed = index_domain_in_db(domain_name, md_path, db_path)
             
             results.append({

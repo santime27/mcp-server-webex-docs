@@ -1,9 +1,9 @@
 # Webex API Docs MCP Server (`webex-api-docs-mcp`)
 
 [![MCP Protocol](https://img.shields.io/badge/Model%20Context%20Protocol-Enabled-blue.svg)](https://modelcontextprotocol.io)
-[![API Endpoints](https://img.shields.io/badge/Webex%20APIs-1%2C456%20Endpoints-00bceb.svg)](https://developer.webex.com)
+[![API Endpoints](https://img.shields.io/badge/Webex%20APIs-4%2C500%2B%20Endpoints-00bceb.svg)](https://developer.webex.com)
 
-**An MCP (Model Context Protocol) server providing fast, local full-text search and complete OpenAPI JSON schemas for all Webex Developer APIs.**
+**An MCP (Model Context Protocol) server providing fast, local full-text search and complete OpenAPI JSON schemas for all Webex Developer APIs & RoomOS xAPI.**
 
 ---
 
@@ -12,7 +12,7 @@
 ### 🔴 The Problem: Hallucinations & Massive Token Cost
 When AI Agents or developers work with Webex APIs, they face three major bottlenecks:
 - **LLM Hallucinations:** Large language models frequently guess incorrect HTTP methods, outdated REST paths, or invent required OAuth scopes (`spark-admin:...`) that lead to `401 Unauthorized` or `404 Not Found` errors.
-- **Context Window Exhaustion:** The official Webex OpenAPI specification spans over **1,450 endpoints** across Admin, Calling, Meetings, and Messaging—equaling more than **10 MB of raw documentation**. Loading this into an LLM context window is slow, expensive, and impractical.
+- **Context Window Exhaustion:** The official Webex OpenAPI and RoomOS xAPI specifications span over **4,500 endpoints** across Admin, Calling, Meetings, Messaging, and RoomOS—equaling more than **15 MB of raw documentation**. Loading this into an LLM context window is slow, expensive, and impractical.
 - **Slow Web Scraping:** Relying on live web searches to fetch developer documentation during an agentic coding workflow causes latency and fragile HTML parsing.
 
 ### 🟢 The Solution: Zero-Token Local Search & Exact Schemas
@@ -38,6 +38,10 @@ Here are examples of questions and tasks your AI Agent can solve instantly using
    - **User Prompt:** *"I want my bot to receive real-time notifications when a message is posted in a Webex room."*
    - **MCP Action:** Locates `POST /webhooks` in the `messaging` domain and returns the required payload structure for `messages/created` events.
 
+5. **📺 RoomOS xAPI Device Automation & AirPlay**
+   - **User Prompt:** *"How do I control AirPlay or adjust volume on a Cisco Room Bar using xAPI?"*
+   - **MCP Action:** Searches `roomos` domain -> Finds `xCommand AirPlay KeyEvent Back` and `xCommand Audio Volume Set` -> Retrieves syntax for Webex Cloud REST API (`POST /v1/xapi/command/...`), Node.js `jsxapi`, and on-device CLI/Macros.
+
 ---
 
 ## 🌟 Why This Architecture? (Dual-Layer Documentation)
@@ -45,17 +49,17 @@ Here are examples of questions and tasks your AI Agent can solve instantly using
 This repository implements a **scalable, reproducible, and Git-versioned documentation pipeline** designed specifically for AI Agents and developers:
 
 1. **Layer 1: Markdown Artifacts in Git (`docs/<domain>.md`)**
-   - Clean, structured Markdown documentation for **Webex Admin, Webex Cloud Calling, Webex Meetings, and Webex Messaging** is generated automatically and stored in `/docs/`.
+   - Clean, structured Markdown documentation for **Webex Admin, Webex Cloud Calling, Webex Meetings, Webex Messaging, and Webex RoomOS xAPI** is generated automatically and stored in `/docs/`.
    - Every time Webex updates an API, running the ETL pipeline produces a standard Git diff so you can track API changes over time.
 2. **Layer 2: SQLAlchemy + SQLite FTS5 Index (`data/webex_docs.db`)**
    - An optimized SQLite relational database managed via **SQLAlchemy 2.0 ORM** combined with **SQLite FTS5 (Full-Text Search)**.
-   - Provides sub-millisecond keyword and semantic search across **1,456 endpoints** without loading multi-megabyte files into memory or context.
+   - Provides sub-millisecond keyword and semantic search across **4,539 endpoints** without loading multi-megabyte files into memory or context.
 
 ---
 
 ## 📦 What's Included?
 
-The server indexes **1,456 official Webex endpoints** across 4 major service domains:
+The server indexes **4,539 official Webex endpoints** across 5 major service domains:
 
 | Domain | Categories | Endpoints | Generated Document | Description |
 | :--- | :---: | :---: | :--- | :--- |
@@ -63,7 +67,8 @@ The server indexes **1,456 official Webex endpoints** across 4 major service dom
 | **`calling`** | 54 | 1,081 | `docs/calling.md` | Webex Cloud Calling APIs (AI Receptionist, Call Queues, Auto Attendant, Routing, DECT, Voicemail). |
 | **`meetings`** | 22 | 166 | `docs/meetings.md` | Webex Meetings APIs (Meetings, Participants, Transcripts, Closed Captions, Recordings, Q&A). |
 | **`messaging`** | 12 | 63 | `docs/messaging.md` | Webex Messaging APIs (Rooms, Messages, Memberships, Teams, Webhooks, Hybrid Data Security). |
-| **TOTAL** | **122** | **1,456** | — | — |
+| **`roomos`** | 4 | 3,083 | `docs/roomos.md` | Webex RoomOS xAPI (`xCommand`, `xConfiguration`, `xStatus`, `xEvent`) for Cisco Room Kit, Board, Desk Pro, and Collaboration Devices. |
+| **TOTAL** | **126** | **4,539** | — | — |
 
 ---
 
@@ -157,8 +162,10 @@ mcp-server-webex-docs/
 │   ├── admin.md
 │   ├── calling.md
 │   ├── meetings.md
-│   └── messaging.md
+│   ├── messaging.md
+│   └── roomos.md              # Webex RoomOS xAPI Commands, Configurations, Statuses & Events
 ├── data/
+│   ├── roomos_schema.json     # Cached official RoomOS xAPI schema (3,083 objects)
 │   └── webex_docs.db          # SQLite FTS5 database indexed via SQLAlchemy
 ├── src/
 │   ├── models/                # SQLAlchemy ORM models (Domain, Category, Endpoint)
@@ -169,7 +176,8 @@ mcp-server-webex-docs/
 │   │   ├── build_all.py       # Main orchestrator CLI
 │   │   ├── db_indexer.py      # SQLite FTS5 indexer
 │   │   ├── fetcher.py         # Developer portal state extractor
-│   │   └── markdown_builder.py# Markdown generator
+│   │   ├── markdown_builder.py# Markdown generator (Admin, Calling, Meetings, Messaging)
+│   │   └── roomos_builder.py  # RoomOS xAPI schema & Markdown generator
 │   ├── __init__.py
 │   └── server.py              # MCP FastMCP server implementation
 ├── requirements.txt
