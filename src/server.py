@@ -17,7 +17,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("webex-api-docs-mcp")
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+except ModuleNotFoundError:
+    # Support for mcp SDK 2.0.0+ where FastMCP was renamed to MCPServer
+    try:
+        from mcp.server.mcpserver import MCPServer as FastMCP
+    except ImportError:
+        from mcp.server import MCPServer as FastMCP
 from src.models.db import Domain, Category, Endpoint, get_session, get_default_db_path
 
 mcp = FastMCP("webex-api-docs-mcp")
